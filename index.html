@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI化潜力评估顾问</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button{font-family:inherit;cursor:pointer}
+textarea,input{font-family:inherit}
+
+/* ── Design tokens ── */
+:root{
+  --cream:#FAF8F3;--cream2:#F2EAE0;
+  --ink:#1A1A18;--ink2:#3A3A38;--ink3:#686866;--ink4:#9C9C9A;
+  --sage:#7D9E8C;--sage-l:#BDD0CA;--sage-d:#4A7563;
+  --warm:#C27D3A;
+  --card:#FFFDF9;--border:#E2DAD0;
+  --sh:rgba(26,26,24,.06);--sh-md:rgba(26,26,24,.10)
+}
+
+/* ── Layout ── */
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--cream);color:var(--ink);
+  display:flex;flex-direction:column
+}
+
+/* ── Header ── */
+#hdr{
+  height:52px;flex-shrink:0;
+  background:var(--cream);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 22px;gap:14px;
+  position:relative;z-index:10
+}
+.logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo-mark{color:var(--sage);font-size:14px}
+.logo-text{
+  font-family:'Cormorant Garamond',serif;
+  font-size:16px;font-weight:500;letter-spacing:.03em
+}
+.prog-track{
+  flex:1;height:2px;background:var(--border);
+  border-radius:2px;overflow:hidden
+}
+#prog-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--sage-l),var(--sage));
+  border-radius:2px;width:0%;
+  transition:width .55s cubic-bezier(.4,0,.2,1)
+}
+#step-lbl{font-size:11px;color:var(--ink4);letter-spacing:.05em;white-space:nowrap;flex-shrink:0}
+
+/* ── Chat ── */
+#chat{flex:1;overflow-y:auto;scroll-behavior:smooth;padding:26px 0 12px}
+#chat::-webkit-scrollbar{width:5px}
+#chat::-webkit-scrollbar-track{background:transparent}
+#chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.chat-wrap{max-width:680px;margin:0 auto;padding:0 20px}
+
+/* ── Messages ── */
+.msg{display:flex;margin-bottom:13px;animation:fadeUp .28s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.msg.ai{justify-content:flex-start}
+.msg.usr{justify-content:flex-end}
+
+.av{
+  width:29px;height:29px;border-radius:50%;
+  background:var(--sage);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:500;
+  flex-shrink:0;margin-right:8px;margin-top:1px
+}
+.bub{
+  max-width:78%;padding:11px 15px;
+  border-radius:16px;font-size:14.5px;line-height:1.65
+}
+.msg.ai .bub{
+  background:var(--card);color:var(--ink);
+  border-radius:4px 16px 16px 16px;
+  box-shadow:0 1px 4px var(--sh),0 0 0 1px rgba(226,218,208,.6)
+}
+.msg.usr .bub{background:var(--sage);color:#fff;border-radius:16px 4px 16px 16px}
+
+/* Typing indicator */
+.typing{display:flex;align-items:center;gap:5px;padding:12px 15px}
+.typing span{
+  width:6px;height:6px;background:var(--ink4);border-radius:50%;
+  animation:typeDot 1.2s ease-in-out infinite
+}
+.typing span:nth-child(2){animation-delay:.14s}
+.typing span:nth-child(3){animation-delay:.28s}
+@keyframes typeDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+/* ── Input area ── */
+#inp-area{
+  background:var(--cream);border-top:1px solid var(--border);
+  padding:13px 20px;flex-shrink:0
+}
+.inp-wrap{max-width:680px;margin:0 auto}
+
+/* Text input */
+.txt-row{display:flex;gap:9px;align-items:center}
+.txt-inp{
+  flex:1;border:1.5px solid var(--border);border-radius:24px;
+  padding:11px 17px;font-size:14px;background:var(--card);color:var(--ink);
+  outline:none;transition:border-color .2s
+}
+.txt-inp:focus{border-color:var(--sage)}
+.txt-inp::placeholder{color:var(--ink4)}
+.send-btn{
+  width:39px;height:39px;border-radius:50%;
+  background:var(--sage);border:none;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .2s,transform .1s
+}
+.send-btn:hover{background:var(--sage-d)}
+.send-btn:active{transform:scale(.92)}
+.send-btn svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Chips */
+.chip-hint{font-size:12px;color:var(--ink4);margin-bottom:8px}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.chip{
+  padding:7px 13px;border:1.5px solid var(--border);border-radius:20px;
+  font-size:13px;font-weight:500;color:var(--ink3);background:var(--card);
+  cursor:pointer;user-select:none;transition:all .14s;line-height:1.3
+}
+.chip:hover{border-color:var(--sage-l);color:var(--sage-d);background:rgba(125,158,140,.06)}
+.chip.on{border-color:var(--sage);color:var(--sage-d);background:rgba(125,158,140,.13)}
+
+.confirm-btn{
+  width:100%;padding:11px;background:var(--sage);color:#fff;
+  border:none;border-radius:24px;font-size:14px;font-weight:500;
+  transition:background .2s;margin-top:1px
+}
+.confirm-btn:hover{background:var(--sage-d)}
+.confirm-btn:disabled{background:var(--sage-l);cursor:not-allowed}
+
+/* Textarea (pain points) */
+.pain-box{
+  width:100%;border:1.5px solid var(--border);border-radius:12px;
+  padding:11px 15px;font-size:14px;line-height:1.6;
+  background:var(--card);color:var(--ink);resize:none;
+  outline:none;transition:border-color .2s;min-height:74px;margin-bottom:10px
+}
+.pain-box:focus{border-color:var(--sage)}
+.pain-box::placeholder{color:var(--ink4)}
+.pain-actions{display:flex;gap:8px}
+.gen-btn{
+  flex:1;padding:11px;background:var(--sage);color:#fff;
+  border:none;border-radius:24px;font-size:14px;font-weight:500;
+  transition:background .2s
+}
+.gen-btn:hover{background:var(--sage-d)}
+
+/* ── Report card ── */
+.rpt-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 5px 26px var(--sh-md);max-width:100%
+}
+
+/* Report header */
+.rpt-hd{
+  background:linear-gradient(135deg,#EEE6DA 0%,#FAF8F3 100%);
+  padding:20px 22px 17px;border-bottom:1px solid var(--border)
+}
+.rpt-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px;font-weight:500;color:var(--ink);margin-bottom:3px
+}
+.rpt-meta{font-size:11px;color:var(--ink4);letter-spacing:.04em}
+
+/* Score section */
+.score-sec{
+  display:flex;align-items:center;gap:22px;
+  padding:20px 22px;border-bottom:1px solid var(--border)
+}
+.ring-wrap{position:relative;width:96px;height:96px;flex-shrink:0}
+.ring-svg{width:100%;height:100%}
+.ring-bg{fill:none;stroke:var(--border);stroke-width:7}
+.ring-arc{
+  fill:none;stroke:var(--sage);stroke-width:7;
+  stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:283;
+  transform:rotate(-90deg);transform-origin:50% 50%
+}
+.ring-ctr{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center
+}
+.ring-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:32px;font-weight:500;line-height:1;color:var(--ink)
+}
+.ring-tag{font-size:9px;font-weight:600;color:var(--sage-d);letter-spacing:.06em;margin-top:1px}
+.score-info{flex:1}
+.score-label{
+  font-family:'Cormorant Garamond',serif;
+  font-size:21px;font-weight:500;color:var(--sage-d);margin-bottom:5px
+}
+.score-exp{font-size:13px;line-height:1.7;color:var(--ink3)}
+
+/* Sections */
+.rpt-sec{padding:18px 22px;border-bottom:1px solid var(--border)}
+.rpt-sec:last-child{border-bottom:none}
+.sec-ttl{
+  font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ink4);margin-bottom:13px
+}
+
+/* Matrix */
+.mx-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--border);border-radius:8px;overflow:hidden;
+  border:1px solid var(--border)
+}
+.mx-cell{background:var(--card);padding:11px}
+.mx-hd{
+  font-size:10px;font-weight:600;letter-spacing:.04em;
+  color:var(--ink4);margin-bottom:7px;display:flex;align-items:center;gap:4px
+}
+.mx-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-a{background:#5A8F78}.dot-b{background:#C27D3A}
+.dot-c{background:#4A7FA5}.dot-d{background:#ABABAB}
+.mx-items{display:flex;flex-direction:column;gap:6px}
+.mx-task{font-size:12.5px;color:var(--ink2);font-weight:500}
+.mx-rec{font-size:11px;color:var(--ink4);margin-top:1px}
+
+/* Quick wins */
+.qw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.qw-card{
+  border:1px solid var(--border);border-radius:10px;
+  padding:13px;position:relative;overflow:hidden;background:var(--card)
+}
+.qw-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;
+  height:3px;background:var(--sage)
+}
+.qw-n{font-size:11px;color:var(--ink4);margin-bottom:4px}
+.qw-t{
+  font-family:'Cormorant Garamond',serif;
+  font-size:15.5px;font-weight:500;color:var(--ink);
+  margin-bottom:7px;line-height:1.3
+}
+.qw-d{font-size:12px;color:var(--ink3);line-height:1.6;margin-bottom:8px}
+.qw-tools{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.qw-tool{
+  padding:2px 7px;background:rgba(125,158,140,.1);
+  border-radius:10px;font-size:10.5px;color:var(--sage-d);font-weight:500
+}
+.qw-ft{display:flex;justify-content:space-between;align-items:center}
+.qw-time{font-size:11.5px;color:var(--sage-d);font-weight:500}
+.diff{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px}
+.diff-low{background:#E5F3EB;color:#276945}
+.diff-mid{background:#FEF2E0;color:#8F6200}
+.diff-high{background:#FDEAEA;color:#8F2020}
+
+/* Skills */
+.sk-list{display:flex;flex-direction:column;gap:10px}
+.sk-row{display:flex;align-items:flex-start;gap:10px}
+.sk-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.sk-urg{background:#C94A4A}.sk-imp{background:#C27D3A}.sk-lrn{background:var(--sage)}
+.sk-info{flex:1}
+.sk-top{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.sk-name{font-size:13.5px;font-weight:500;color:var(--ink)}
+.sk-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px}
+.skb-urg{background:#FDEAEA;color:#8F2020}
+.skb-imp{background:#FEF2E0;color:#8F6200}
+.skb-lrn{background:#E5F3EB;color:#276945}
+.sk-reason{font-size:12px;color:var(--ink4);line-height:1.5}
+
+/* Personal note */
+.note{
+  font-family:'Cormorant Garamond',serif;
+  font-size:16.5px;font-style:italic;line-height:1.88;color:var(--ink2)
+}
+
+/* Report actions */
+.rpt-acts{
+  display:flex;gap:8px;padding:15px 22px;
+  background:var(--cream2);border-top:1px solid var(--border)
+}
+.act{
+  padding:9px 17px;border-radius:20px;
+  font-size:13px;font-weight:500;transition:all .15s;border:1.5px solid transparent
+}
+.act-p{background:var(--sage);color:#fff;border-color:var(--sage)}
+.act-p:hover{background:var(--sage-d);border-color:var(--sage-d)}
+.act-g{background:transparent;color:var(--ink3);border-color:var(--border)}
+.act-g:hover{border-color:var(--sage-l);color:var(--sage-d)}
+
+/* Loading */
+.load-wrap{display:flex;flex-direction:column;align-items:center;gap:11px;padding:22px;color:var(--ink4);font-size:13px}
+.load-dots{display:flex;gap:5px}
+.load-dots span{
+  width:8px;height:8px;background:var(--sage-l);border-radius:50%;
+  animation:ldPulse 1.4s ease-in-out infinite
+}
+.load-dots span:nth-child(2){animation-delay:.2s}
+.load-dots span:nth-child(3){animation-delay:.4s}
+@keyframes ldPulse{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* Print */
+@media print{
+  #hdr,#inp-area,.rpt-acts{display:none!important}
+  body,html{height:auto;overflow:visible;background:#fff!important}
+  #chat{overflow:visible;height:auto;padding:0}
+  .chat-wrap{padding:20px;max-width:100%}
+  .msg:not(.print-show){display:none!important}
+  .rpt-card{box-shadow:none!important}
+}
+
+/* Responsive */
+@media(max-width:560px){
+  .qw-grid{grid-template-columns:1fr;gap:13px}
+  .qw-card{margin-top:0}
+  .mx-grid{grid-template-columns:1fr}
+  .score-sec{flex-direction:column;align-items:center;text-align:center}
+  .bub{max-width:92%}
+  .chip{font-size:12.5px;padding:6px 11px}
+}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="logo">
+    <span class="logo-mark">✦</span>
+    <span class="logo-text">AI化潜力评估顾问</span>
+  </div>
+  <div class="prog-track"><div id="prog-fill"></div></div>
+  <span id="step-lbl" class="step-label">准备中</span>
+</header>
+
+<div id="chat">
+  <div class="chat-wrap" id="chat-inner"></div>
+</div>
+
+<div id="inp-area">
+  <div class="inp-wrap" id="inp-inner"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+const ud = {
+  name:'', role:'', tools:[], workTypes:[],
+  timeSinks:[], aiAttitude:'', painPoints:''
+};
+let stepIdx = 0;
+let busy    = false;
+const TOTAL = 7;
+
+/* ═══════════════════════════════════════════════════════════
+   STEP DEFINITIONS
+═══════════════════════════════════════════════════════════ */
+const STEPS = [
+  {
+    id:'name',
+    msgs:[
+      '你好，我是你的 AI 工作顾问。',
+      '接下来，我会通过几个简短的问题，为你量身定制一份《AI化潜力评估报告》，找出工作中最值得被 AI 加速的环节。',
+      '请问，你叫什么名字？'
+    ],
+    type:'text', ph:'输入你的名字…',
+    field:'name', ok: v => v.trim().length > 0
+  },
+  {
+    id:'role',
+    msgs: d => [`${d.name}，很高兴认识你。`, `你目前的职位或岗位是什么？`],
+    type:'text', ph:'例如：市场运营、产品经理、数据分析师…',
+    field:'role', ok: v => v.trim().length > 0
+  },
+  {
+    id:'tools',
+    msgs: d => [`好的，我先了解一下你的工具习惯。`, `作为${d.role}，日常工作中你会用到哪些工具？（可多选）`],
+    type:'multi', hint:'可多选，选完后点击确认',
+    opts:['Excel / WPS','Word / 文档写作','PPT 制作','Python / 代码',
+          '企业微信 / 钉钉','CRM 系统','ERP 系统','Notion / 飞书',
+          '设计工具（PS/Figma）','视频剪辑工具'],
+    field:'tools', ok: v => v.length > 0
+  },
+  {
+    id:'workTypes',
+    msgs:['你的日常工作主要包含哪些类型的任务？（可多选）'],
+    type:'multi', hint:'可多选，选完后点击确认',
+    opts:['文档撰写与整理','数据分析与报表','项目协调与沟通','代码开发调试',
+          '客户服务与跟进','内容创作（图文/视频）','市场营销策划',
+          '财务核算与审计','人员管理与招聘','产品设计与研发'],
+    field:'workTypes', ok: v => v.length > 0
+  },
+  {
+    id:'timeSinks',
+    msgs:['在这些工作中，哪些事情最让你感觉「时间不够用」？（可多选）'],
+    type:'multi', hint:'选出最耗时的环节，可多选',
+    opts:['重复性数据录入','写汇报 / 周报 / 日报','邮件与消息回复',
+          '搜集与整理信息','开会与做会议记录','制作 PPT / 数据图表',
+          '跨部门沟通确认','代码审查与调试','培训与知识传递'],
+    field:'timeSinks', ok: v => v.length > 0
+  },
+  {
+    id:'aiAttitude',
+    msgs: d => [`最后一个关于你自己的问题，${d.name}。`, `你对 AI 工具的了解和接受程度，哪个描述最准确？`],
+    type:'single',
+    opts:['完全陌生，但很好奇','听说过 ChatGPT，偶尔尝试过',
+          '工作中已有规律性使用','深度用户，探索过多种 AI 工具'],
+    field:'aiAttitude', ok: v => v.length > 0
+  },
+  {
+    id:'painPoints',
+    msgs: d => [
+      `感谢你的分享，${d.name}！`,
+      `有没有什么具体的工作场景或痛点，想让我重点关注？`,
+      `随便说几个字就好，也可以直接点击「生成报告」。`
+    ],
+    type:'pain',
+    ph:'例如：每周整理销售数据需要3小时，或者邮件回复占用了太多碎片时间…',
+    field:'painPoints', optional:true
+  }
+];
+
+/* ═══════════════════════════════════════════════════════════
+   DOM HELPERS
+═══════════════════════════════════════════════════════════ */
+const chatInner = document.getElementById('chat-inner');
+const inpInner  = document.getElementById('inp-inner');
+const progFill  = document.getElementById('prog-fill');
+const stepLbl   = document.getElementById('step-lbl');
+const chatEl    = document.getElementById('chat');
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)) }
+function scrollBot(){ setTimeout(()=>{ chatEl.scrollTop = chatEl.scrollHeight },50) }
+
+function updateProg(idx){
+  const pct = idx < 0 ? 0 : Math.round(((idx+1)/TOTAL)*100);
+  progFill.style.width = pct+'%';
+  stepLbl.textContent = idx < 0 ? '准备中' : idx >= TOTAL ? '报告已生成' : `${idx+1} / ${TOTAL}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHAT MESSAGES
+═══════════════════════════════════════════════════════════ */
+function addAiMsg(html){
+  const row = document.createElement('div'); row.className = 'msg ai';
+  const av  = document.createElement('div'); av.className  = 'av'; av.textContent = '✦';
+  const bub = document.createElement('div'); bub.className = 'bub'; bub.innerHTML = html.replace(/\n/g,'<br>');
+  row.append(av,bub); chatInner.appendChild(row); scrollBot(); return row;
+}
+
+function addUsrMsg(text){
+  const row = document.createElement('div'); row.className = 'msg usr';
+  const bub = document.createElement('div'); bub.className = 'bub'; bub.innerHTML = esc(text);
+  row.appendChild(bub); chatInner.appendChild(row); scrollBot(); return row;
+}
+
+function showTyping(){
+  const row = document.createElement('div'); row.className = 'msg ai'; row.id = 'ty-bub';
+  const av  = document.createElement('div'); av.className  = 'av'; av.textContent = '✦';
+  const bub = document.createElement('div'); bub.className = 'bub';
+  bub.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  row.append(av,bub); chatInner.appendChild(row); scrollBot(); return row;
+}
+
+function removeTyping(){ const el=document.getElementById('ty-bub'); if(el) el.remove(); }
+
+function typeMsg(text){
+  return new Promise(resolve=>{
+    showTyping();
+    const delay = Math.min(Math.max(text.length*22,700),2000);
+    setTimeout(()=>{ removeTyping(); addAiMsg(text); setTimeout(resolve,160); }, delay);
+  });
+}
+
+async function typeAll(msgs){
+  const list = typeof msgs==='function' ? msgs(ud) : msgs;
+  for(const m of list) await typeMsg(m);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INPUT RENDERERS
+═══════════════════════════════════════════════════════════ */
+function clearInp(){ inpInner.innerHTML=''; }
+
+function renderInput(s){
+  if(s.type==='text')   showTextInput(s);
+  else if(s.type==='multi')  showChips(s,false);
+  else if(s.type==='single') showChips(s,true);
+  else if(s.type==='pain')   showPainInput(s);
+}
+
+function showTextInput(step){
+  clearInp();
+  const row = document.createElement('div'); row.className='txt-row';
+  const inp = document.createElement('input');
+  inp.type='text'; inp.className='txt-inp';
+  inp.placeholder=step.ph||''; inp.maxLength=80;
+
+  const btn = document.createElement('button'); btn.className='send-btn';
+  btn.title='发送';
+  btn.innerHTML=`<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+
+  const submit=()=>{
+    const v=inp.value.trim();
+    if(!v||busy) return;
+    submitAnswer(step,v);
+  };
+  btn.addEventListener('click',submit);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+  row.append(inp,btn); inpInner.appendChild(row);
+  setTimeout(()=>inp.focus(),80);
+}
+
+function showChips(step, single){
+  clearInp();
+  const selected=new Set();
+
+  if(!single){
+    const hint=document.createElement('p'); hint.className='chip-hint';
+    hint.textContent=step.hint||'可多选';
+    inpInner.appendChild(hint);
+  }
+
+  const wrap=document.createElement('div'); wrap.className='chips-wrap';
+  step.opts.forEach(opt=>{
+    const c=document.createElement('button'); c.className='chip'; c.textContent=opt;
+    c.addEventListener('click',()=>{
+      if(single){
+        wrap.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+        selected.clear();
+        c.classList.add('on'); selected.add(opt);
+        cfm.disabled=false;
+      } else {
+        if(selected.has(opt)){ selected.delete(opt); c.classList.remove('on'); }
+        else { selected.add(opt); c.classList.add('on'); }
+        cfm.disabled=(selected.size===0);
+      }
+    });
+    wrap.appendChild(c);
+  });
+
+  const cfm=document.createElement('button'); cfm.className='confirm-btn';
+  cfm.textContent=single?'确认选择':'确认所选';
+  cfm.disabled=true;
+  cfm.addEventListener('click',()=>{
+    if(selected.size===0||busy) return;
+    const val=single?[...selected][0]:[...selected];
+    submitAnswer(step,val);
+  });
+
+  inpInner.append(wrap,cfm);
+}
+
+function showPainInput(step){
+  clearInp();
+  const ta=document.createElement('textarea'); ta.className='pain-box';
+  ta.placeholder=step.ph||''; ta.rows=3;
+
+  const acts=document.createElement('div'); acts.className='pain-actions';
+  const gen=document.createElement('button'); gen.className='gen-btn';
+  gen.textContent='生成专属报告 →';
+  gen.addEventListener('click',()=>{
+    const v=ta.value.trim();
+    ud.painPoints=v;
+    addUsrMsg(v||'（直接生成）');
+    clearInp();
+    runReportFlow();
+  });
+  acts.appendChild(gen);
+  inpInner.append(ta,acts);
+  setTimeout(()=>ta.focus(),80);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STEP SUBMISSION & ADVANCEMENT
+═══════════════════════════════════════════════════════════ */
+async function submitAnswer(step, val){
+  if(busy) return;
+  busy=true;
+  clearInp();
+  ud[step.field]=val;
+  const display=Array.isArray(val)?val.join('、'):val;
+  addUsrMsg(display);
+  await sleep(360);
+  stepIdx++;
+  busy=false;
+  if(stepIdx<STEPS.length){
+    updateProg(stepIdx);
+    const s=STEPS[stepIdx];
+    await typeAll(s.msgs);
+    renderInput(s);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   REPORT GENERATION FLOW
+═══════════════════════════════════════════════════════════ */
+async function runReportFlow(){
+  busy=true;
+  updateProg(TOTAL);
+
+  await typeMsg('好的！我正在分析你的工作场景，生成专属报告…');
+
+  // Loading bubble
+  const loadRow=document.createElement('div'); loadRow.className='msg ai';
+  const lAv=document.createElement('div'); lAv.className='av'; lAv.textContent='✦';
+  const lBub=document.createElement('div'); lBub.className='bub';
+  lBub.innerHTML=`<div class="load-wrap"><div class="load-dots"><span></span><span></span><span></span></div><span>正在生成，通常需要 15-30 秒，请稍候…</span></div>`;
+  loadRow.append(lAv,lBub); chatInner.appendChild(loadRow); scrollBot();
+
+  try{
+    const res=await fetch('/api/generate-report',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(ud)
+    });
+    const data=await res.json();
+    loadRow.remove();
+    if(!data.success) throw new Error(data.error||'生成失败');
+
+    // Render report
+    const rRow=document.createElement('div'); rRow.className='msg ai print-show';
+    const rAv=document.createElement('div'); rAv.className='av'; rAv.textContent='✦';
+    const rBub=document.createElement('div');
+    rBub.style.cssText='max-width:100%;padding:0;background:none;box-shadow:none;border-radius:0';
+    rBub.appendChild(buildReport(data.report));
+    rRow.append(rAv,rBub); chatInner.appendChild(rRow); scrollBot();
+
+    // Animate ring after render
+    setTimeout(()=>animateRing(data.report.score),250);
+
+    await sleep(700);
+    await typeMsg(`以上是你的专属报告，${ud.name}。如有疑问欢迎继续探讨，祝 AI 转型顺利 ✦`);
+    stepLbl.textContent='报告已生成';
+
+  }catch(err){
+    loadRow.remove();
+    await typeMsg(`抱歉，报告生成遇到了问题：${err.message}。\n请刷新页面重试，或检查网络和 API Key 是否有效。`);
+  }
+  busy=false;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BUILD REPORT DOM
+═══════════════════════════════════════════════════════════ */
+function buildReport(r){
+  const card=document.createElement('div'); card.className='rpt-card';
+
+  /* Header */
+  const hd=document.createElement('div'); hd.className='rpt-hd';
+  hd.innerHTML=`<div class="rpt-title">AI化潜力评估报告</div>
+    <div class="rpt-meta">${esc(ud.name)} · ${esc(ud.role)} · ${new Date().toLocaleDateString('zh-CN')}</div>`;
+  card.appendChild(hd);
+
+  /* Score */
+  const scoreColor= r.score>=80?'#5A8F78': r.score>=60?'#C27D3A': r.score>=40?'#4A7FA5':'#A0A0A0';
+  const ss=document.createElement('div'); ss.className='score-sec';
+  ss.innerHTML=`
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 100 100">
+        <circle class="ring-bg" cx="50" cy="50" r="45"/>
+        <circle class="ring-arc" id="ring-arc" cx="50" cy="50" r="45" style="stroke:${scoreColor}"/>
+      </svg>
+      <div class="ring-ctr">
+        <div class="ring-num" id="ring-num">0</div>
+        <div class="ring-tag">${esc(r.scoreLabel)}</div>
+      </div>
+    </div>
+    <div class="score-info">
+      <div class="score-label" style="color:${scoreColor}">${esc(r.scoreLabel)}</div>
+      <div class="score-exp">${esc(r.scoreExplanation)}</div>
+    </div>`;
+  card.appendChild(ss);
+
+  /* Matrix */
+  if(r.matrix&&r.matrix.length){
+    const sec=document.createElement('div'); sec.className='rpt-sec';
+    sec.innerHTML='<div class="sec-ttl">任务优化矩阵</div>';
+    const g=document.createElement('div'); g.className='mx-grid';
+
+    const cats={A:[],B:[],C:[],D:[]};
+    r.matrix.forEach(m=>{
+      const hi=m.valueLevel==='高';
+      const ez=m.autoLevel==='易';
+      if(hi&&ez) cats.A.push(m); else if(hi&&!ez) cats.B.push(m);
+      else if(!hi&&ez) cats.C.push(m); else cats.D.push(m);
+    });
+
+    [{key:'A',dot:'dot-a',lbl:'高价值 × 易自动化'},{key:'B',dot:'dot-b',lbl:'高价值 × 难自动化'},
+     {key:'C',dot:'dot-c',lbl:'低价值 × 易自动化'},{key:'D',dot:'dot-d',lbl:'低价值 × 难自动化'}
+    ].forEach(({key,dot,lbl})=>{
+      const cell=document.createElement('div'); cell.className='mx-cell';
+      cell.innerHTML=`<div class="mx-hd"><div class="mx-dot ${dot}"></div>${esc(lbl)}</div>`;
+      const items=document.createElement('div'); items.className='mx-items';
+      if(!cats[key].length){
+        items.innerHTML='<div class="mx-task" style="color:var(--ink4);font-size:11.5px;font-style:italic;line-height:1.5">该象限暂无<br>明确对应任务</div>';
+      } else {
+        cats[key].forEach(m=>{
+          const it=document.createElement('div'); it.className='mx-item';
+          it.innerHTML=`<div class="mx-task">${esc(m.task)}</div><div class="mx-rec">${esc(m.recommendation)}</div>`;
+          items.appendChild(it);
+        });
+      }
+      cell.appendChild(items); g.appendChild(cell);
+    });
+    sec.appendChild(g); card.appendChild(sec);
+  }
+
+  /* Quick wins */
+  if(r.quickWins&&r.quickWins.length){
+    const sec=document.createElement('div'); sec.className='rpt-sec';
+    sec.innerHTML=`<div class="sec-ttl">${r.quickWins.length} 个快赢机会</div>`;
+    const g=document.createElement('div'); g.className='qw-grid';
+    const dm={'低':'low','中':'mid','高':'high'};
+    r.quickWins.forEach((qw,i)=>{
+      const tools=(qw.tools||[]).map(t=>`<span class="qw-tool">${esc(t)}</span>`).join('');
+      const dc=dm[qw.difficulty]||'mid';
+      const c=document.createElement('div'); c.className='qw-card';
+      c.innerHTML=`
+        <div class="qw-n">0${i+1}</div>
+        <div class="qw-t">${esc(qw.title)}</div>
+        <div class="qw-d">${esc(qw.description)}</div>
+        <div class="qw-tools">${tools}</div>
+        <div class="qw-ft">
+          <span class="qw-time">节省 ${esc(qw.timeSaved)}</span>
+          <span class="diff diff-${dc}">难度${esc(qw.difficulty)}</span>
+        </div>`;
+      g.appendChild(c);
+    });
+    sec.appendChild(g); card.appendChild(sec);
+  }
+
+  /* Skill trends */
+  if(r.skillTrends&&r.skillTrends.length){
+    const sec=document.createElement('div'); sec.className='rpt-sec';
+    sec.innerHTML='<div class="sec-ttl">技能趋势建议</div>';
+    const list=document.createElement('div'); list.className='sk-list';
+    const pm={
+      '紧迫':{dot:'sk-urg',badge:'skb-urg',lbl:'紧迫'},
+      '重要':{dot:'sk-imp',badge:'skb-imp',lbl:'重要'},
+      '了解':{dot:'sk-lrn',badge:'skb-lrn',lbl:'了解'}
+    };
+    r.skillTrends.forEach(s=>{
+      const p=pm[s.priority]||pm['了解'];
+      const row=document.createElement('div'); row.className='sk-row';
+      row.innerHTML=`
+        <div class="sk-dot ${p.dot}"></div>
+        <div class="sk-info">
+          <div class="sk-top">
+            <span class="sk-name">${esc(s.skill)}</span>
+            <span class="sk-badge ${p.badge}">${p.lbl}</span>
+          </div>
+          <div class="sk-reason">${esc(s.reason)}</div>
+        </div>`;
+      list.appendChild(row);
+    });
+    sec.appendChild(list); card.appendChild(sec);
+  }
+
+  /* Personal note */
+  if(r.personalNote){
+    const sec=document.createElement('div'); sec.className='rpt-sec';
+    sec.innerHTML=`<div class="sec-ttl">写给你的话</div>
+      <div class="note">${esc(r.personalNote).replace(/\n/g,'<br>')}</div>`;
+    card.appendChild(sec);
+  }
+
+  /* Actions */
+  const acts=document.createElement('div'); acts.className='rpt-acts';
+
+  const pBtn=document.createElement('button'); pBtn.className='act act-p';
+  pBtn.textContent='打印 / 保存 PDF';
+  pBtn.addEventListener('click',()=>window.print());
+
+  const cBtn=document.createElement('button'); cBtn.className='act act-g';
+  cBtn.textContent='复制摘要';
+  cBtn.addEventListener('click',()=>{
+    const txt=`AI化潜力评估报告\n${ud.name} · ${ud.role}\n\n潜力评分：${r.score}/100（${r.scoreLabel}）\n${r.scoreExplanation}\n\n快赢机会：\n${(r.quickWins||[]).map((q,i)=>`${i+1}. ${q.title}（节省${q.timeSaved}）`).join('\n')}\n\n${r.personalNote}`;
+    navigator.clipboard.writeText(txt).then(()=>{
+      cBtn.textContent='已复制 ✓';
+      setTimeout(()=>cBtn.textContent='复制摘要',2200);
+    });
+  });
+
+  acts.append(pBtn,cBtn); card.appendChild(acts);
+  return card;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCORE RING ANIMATION
+═══════════════════════════════════════════════════════════ */
+function animateRing(target){
+  const arc=document.getElementById('ring-arc');
+  const num=document.getElementById('ring-num');
+  if(!arc||!num) return;
+  const C=283, T=C*(1-target/100);
+  const DUR=1700; let t0=null;
+  function frame(ts){
+    if(!t0) t0=ts;
+    const t=Math.min((ts-t0)/DUR,1);
+    const e=1-Math.pow(1-t,3); // ease-out cubic
+    arc.style.strokeDashoffset=C-(C-T)*e;
+    num.textContent=Math.round(target*e);
+    if(t<1) requestAnimationFrame(frame); else num.textContent=target;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   START
+═══════════════════════════════════════════════════════════ */
+async function start(){
+  updateProg(0);
+  const s=STEPS[0];
+  await typeAll(s.msgs);
+  renderInput(s);
+}
+
+start();
+</script>
+</body>
+</html>
