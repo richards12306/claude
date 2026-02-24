@@ -319,7 +319,8 @@ body{
 
 /* Responsive */
 @media(max-width:560px){
-  .qw-grid{grid-template-columns:1fr}
+  .qw-grid{grid-template-columns:1fr;gap:13px}
+  .qw-card{margin-top:0}
   .mx-grid{grid-template-columns:1fr}
   .score-sec{flex-direction:column;align-items:center;text-align:center}
   .bub{max-width:92%}
@@ -700,7 +701,7 @@ function buildReport(r){
       cell.innerHTML=`<div class="mx-hd"><div class="mx-dot ${dot}"></div>${esc(lbl)}</div>`;
       const items=document.createElement('div'); items.className='mx-items';
       if(!cats[key].length){
-        items.innerHTML='<div class="mx-task" style="color:var(--ink4);font-size:11.5px">—</div>';
+        items.innerHTML='<div class="mx-task" style="color:var(--ink4);font-size:11.5px;font-style:italic;line-height:1.5">该象限暂无<br>明确对应任务</div>';
       } else {
         cats[key].forEach(m=>{
           const it=document.createElement('div'); it.className='mx-item';
@@ -716,7 +717,7 @@ function buildReport(r){
   /* Quick wins */
   if(r.quickWins&&r.quickWins.length){
     const sec=document.createElement('div'); sec.className='rpt-sec';
-    sec.innerHTML='<div class="sec-ttl">3 个快赢机会</div>';
+    sec.innerHTML=`<div class="sec-ttl">${r.quickWins.length} 个快赢机会</div>`;
     const g=document.createElement('div'); g.className='qw-grid';
     const dm={'低':'low','中':'mid','高':'high'};
     r.quickWins.forEach((qw,i)=>{
