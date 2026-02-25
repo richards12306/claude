@@ -1,0 +1,106 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── 1. 语法检查（每次 push / PR 都跑）────────────────────
+  check:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check server.js syntax
+        run: node --check server.js && echo "✓ server.js OK"
+
+      - name: Check index.html structure
+        run: |
+          grep -q '<!DOCTYPE html>' index.html && echo "✓ index.html OK"
+          grep -q '/api/generate-report' index.html && echo "✓ API endpoint OK"
+
+  # ── 2. Docker 构建测试（验证镜像能正常 build）────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t ai-assessment:ci .
+
+      - name: Smoke test (start + health check)
+        run: |
+          docker run -d --name smoke \
+            -p 3001:3000 \
+            -e API_KEY=test-key-placeholder \
+            -e API_BASE_URL=https://api.deepseek.com \
+            -e API_MODEL=deepseek-chat \
+            ai-assessment:ci
+          sleep 3
+          curl -sf http://localhost:3001/ | grep -q "AI化潜力" && echo "✓ 页面响应正常"
+          docker rm -f smoke
+
+  # ── 3. 部署到服务器（仅 push 到 main/master 时触发）──────
+  #
+  # 需要在 GitHub 仓库 Settings → Secrets → Actions 中添加：
+  #   SERVER_HOST     服务器 IP 或域名
+  #   SERVER_USER     SSH 用户名（如 ubuntu）
+  #   SERVER_SSH_KEY  SSH 私钥（cat ~/.ssh/id_rsa 的完整内容）
+  #   API_KEY         DeepSeek / Anthropic API Key
+  #   API_BASE_URL    如 https://api.deepseek.com
+  #   API_MODEL       如 deepseek-chat
+  #
+  deploy:
+    name: Deploy to Server
+    needs: [check, docker-build]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 2a. 把代码文件传到服务器
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "server.js,index.html,Dockerfile,docker-compose.yml"
+          target: /opt/ai-assessment
+          strip_components: 0
+
+      # 2b. SSH 进去写 .env、重启容器
+      - name: Restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/ai-assessment
+
+            # 写入 .env（覆盖旧值，Key 存在 GitHub Secrets 中，不落盘到代码仓库）
+            cat > .env <<EOF
+            API_KEY=${{ secrets.API_KEY }}
+            API_BASE_URL=${{ secrets.API_BASE_URL }}
+            API_MODEL=${{ secrets.API_MODEL }}
+            PORT=3000
+            EOF
+
+            # 重启容器
+            docker compose down --remove-orphans || true
+            docker compose up -d --build
+
+            # 等待健康检查通过
+            sleep 5
+            curl -sf http://localhost:3000/ | grep -q "AI" && echo "✓ 服务健康" || (echo "✗ 健康检查失败" && exit 1)

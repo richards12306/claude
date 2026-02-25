@@ -1,0 +1,21 @@
+# ── AI化潜力评估顾问 · docker-compose ─────────────────────
+# 使用前先复制 .env.example 为 .env 并填入 API Key
+#
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 查看日志: docker compose logs -f
+
+services:
+  app:
+    build: .
+    image: ai-assessment:latest
+    container_name: ai-assessment
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env          # API_KEY / API_BASE_URL / API_MODEL 写在这里
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
